@@ -366,184 +366,177 @@
   </div>
 
 <script>
-  window.tasks = <%- JSON.stringify(tareas) %>;
-  window.sesion = <%- JSON.stringify(sesion) %>;
+  document.addEventListener("DOMContentLoaded", function () {
+    let tasks = window.tasks || [];
+    let sesion = window.sesion;
+    let studyCount = sesion && typeof sesion.sesiones === 'number' ? sesion.sesiones : 0;
+    let breakCount = sesion && typeof sesion.descansos === 'number' ? sesion.descansos : 0;
 
-  let studyCount = sesion.sesiones || 0;
-  let breakCount = sesion.descansos || 0;
-  let horaEntrada = new Date().toISOString();
+    let horaEntrada = new Date().toISOString();
 
-  let studyDuration = 1 * 60;
-  let breakDuration = 1 * 60;
-  let currentTime = studyDuration;
-  let isRunning = false;
-  let isStudySession = true;
-  let timerInterval;
+    let studyDuration = 1 * 60;
+    let breakDuration = 1 * 60;
+    let currentTime = studyDuration;
+    let isRunning = false;
+    let isStudySession = true;
+    let timerInterval;
 
-  const timerDisplay = document.getElementById("timer");
-  const studyCountDisplay = document.getElementById("studyCount");
-  const breakCountDisplay = document.getElementById("breakCount");
-  const sessionLabel = document.getElementById("sessionLabel");
-  const taskList = document.getElementById("taskList");
+    const timerDisplay = document.getElementById("timer");
+    const studyCountDisplay = document.getElementById("studyCount");
+    const breakCountDisplay = document.getElementById("breakCount");
+    const sessionLabel = document.getElementById("sessionLabel");
+    const taskList = document.getElementById("taskList");
 
-  function updateDisplay() {
-    const minutes = String(Math.floor(currentTime / 60)).padStart(2, '0');
-    const seconds = String(currentTime % 60).padStart(2, '0');
-    timerDisplay.textContent = `${minutes}:${seconds}`;
-    sessionLabel.textContent = isStudySession ? "Sesión de Estudio" : "Descanso";
-    studyCountDisplay.textContent = studyCount;
-    breakCountDisplay.textContent = breakCount;
-  }
-
-  function startTimer() {
-    if (isRunning) return;
-    isRunning = true;
-
-    if (isStudySession) {
-      horaEntrada = new Date().toISOString();
+    function updateDisplay() {
+      const minutes = String(Math.floor(currentTime / 60)).padStart(2, '0');
+      const seconds = String(currentTime % 60).padStart(2, '0');
+      timerDisplay.textContent = `${minutes}:${seconds}`;
+      sessionLabel.textContent = isStudySession ? "Sesión de Estudio" : "Descanso";
+      studyCountDisplay.textContent = studyCount;
+      breakCountDisplay.textContent = breakCount;
     }
 
-    timerInterval = setInterval(() => {
-      currentTime--;
-      updateDisplay();
-      if (currentTime <= 0) {
-        clearInterval(timerInterval);
-        isRunning = false;
+    function startTimer() {
+      if (isRunning) return;
+      isRunning = true;
+      if (isStudySession) {
+        horaEntrada = new Date().toISOString();
+      }
 
-        if (isStudySession) {
-          studyCount++;
-        } else {
-          breakCount++;
-        }
-
-        guardarSesionPomodoro();
-
-        currentTime = isStudySession ? breakDuration : studyDuration;
-        isStudySession = !isStudySession;
+      timerInterval = setInterval(() => {
+        currentTime--;
         updateDisplay();
+        if (currentTime <= 0) {
+          clearInterval(timerInterval);
+          isRunning = false;
 
-        setTimeout(() => startTimer(), 1000);
-      }
-    }, 1000);
-  }
+          if (isStudySession) {
+            studyCount++;
+          } else {
+            breakCount++;
+          }
 
-  function pauseTimer() {
-    clearInterval(timerInterval);
-    isRunning = false;
-  }
+          guardarSesionPomodoro();
 
-  function resetTimer() {
-    clearInterval(timerInterval);
-    isRunning = false;
-    currentTime = isStudySession ? studyDuration : breakDuration;
-    updateDisplay();
-  }
+          currentTime = isStudySession ? breakDuration : studyDuration;
+          isStudySession = !isStudySession;
+          updateDisplay();
 
-  function guardarSesionPomodoro() {
-    fetch('/guardar-pomodoro', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        horaEntrada: isStudySession ? horaEntrada : null,
-        sesionesCompletadas: studyCount,
-        descansos: breakCount
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      console.log('Sesión guardada:', data);
-    })
-    .catch(err => {
-      console.error('Error al guardar sesión:', err);
-    });
-  }
-
-  function renderTasks() {
-    taskList.innerHTML = '';
-    tasks.forEach(task => {
-      const li = document.createElement('li');
-      li.setAttribute('data-id', task.id);
-      li.className = task.completada ? 'completed' : '';
-
-      li.innerHTML = `
-        <span class="task-text">${task.descripcion}</span>
-        <div class="task-actions">
-          ${!task.completada ? `<button class="complete-btn" onclick="completarTarea('${task.id}')">✅ Completar</button>` : ''}
-          <button class="delete-btn" onclick="eliminarTarea('${task.id}')">🗑️ Eliminar</button>
-        </div>
-      `;
-
-      taskList.appendChild(li);
-    });
-  }
-
-  function completarTarea(id) {
-    fetch('/completar-tarea', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tareaId: id })
-    })
-    .then(res => res.json())
-    .then(() => {
-      const task = tasks.find(t => t.id === id);
-      if (task) {
-        task.completada = true;
-        renderTasks();
-      }
-    })
-    .catch(console.error);
-  }
-
-  function eliminarTarea(id) {
-    fetch(`/eliminar-tarea/${id}`, {
-      method: 'DELETE'
-    })
-    .then(res => res.json())
-    .then(() => {
-      tasks = tasks.filter(t => t.id !== id);
-      renderTasks();
-    })
-    .catch(console.error);
-  }
-
-  document.getElementById('formNuevaTarea').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const descripcion = document.getElementById('inputTarea').value.trim();
-    if (!descripcion) return;
-
-    fetch('/agregar-tarea', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ descripcion })
-    })
-    .then(res => res.json())
-    .then(data => {
-      tasks.push(data);
-      renderTasks();
-      document.getElementById('inputTarea').value = '';
-    })
-    .catch(console.error);
-  });
-
-  window.addEventListener('beforeunload', () => {
-    if (studyCount > 0 || breakCount > 0) {
-      const data = {
-        horaEntrada: horaEntrada,
-        horaSalida: new Date().toISOString(),
-        sesionesCompletadas: studyCount,
-        descansos: breakCount
-      };
-
-      const blob = new Blob([JSON.stringify(data)], {
-        type: 'application/json'
-      });
-
-      navigator.sendBeacon('/guardar-pomodoro', blob);
+          setTimeout(() => startTimer(), 1000);
+        }
+      }, 1000);
     }
-  });
 
-  updateDisplay();
-  renderTasks();
+    function pauseTimer() {
+      clearInterval(timerInterval);
+      isRunning = false;
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      isRunning = false;
+      currentTime = isStudySession ? studyDuration : breakDuration;
+      updateDisplay();
+    }
+
+    function guardarSesionPomodoro() {
+      fetch('/guardar-pomodoro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          horaEntrada: isStudySession ? horaEntrada : null,
+          sesionesCompletadas: studyCount,
+          descansos: breakCount
+        })
+      })
+        .then(res => res.json())
+        .then(data => console.log('Sesión guardada:', data))
+        .catch(err => console.error('Error al guardar sesión:', err));
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = '';
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.setAttribute('data-id', task.id);
+        li.className = task.completada ? 'completed' : '';
+        li.innerHTML = `
+          <span class="task-text">${task.descripcion}</span>
+          <div class="task-actions">
+            ${!task.completada ? `<button class="complete-btn" onclick="completarTarea('${task.id}')">✅ Completar</button>` : ''}
+            <button class="delete-btn" onclick="eliminarTarea('${task.id}')">🗑️ Eliminar</button>
+          </div>
+        `;
+        taskList.appendChild(li);
+      });
+    }
+
+    function completarTarea(id) {
+      fetch('/completar-tarea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tareaId: id })
+      })
+        .then(res => res.json())
+        .then(() => {
+          const task = tasks.find(t => t.id === id);
+          if (task) {
+            task.completada = true;
+            renderTasks();
+          }
+        })
+        .catch(console.error);
+    }
+
+    function eliminarTarea(id) {
+      fetch(`/eliminar-tarea/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(() => {
+          tasks = tasks.filter(t => t.id !== id);
+          renderTasks();
+        })
+        .catch(console.error);
+    }
+
+    document.getElementById('formNuevaTarea').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const descripcion = document.getElementById('inputTarea').value.trim();
+      if (!descripcion) return;
+
+      fetch('/agregar-tarea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion })
+      })
+        .then(res => res.json())
+        .then(data => {
+          tasks.push(data);
+          renderTasks();
+          document.getElementById('inputTarea').value = '';
+        })
+        .catch(console.error);
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (studyCount > 0 || breakCount > 0) {
+        const data = {
+          horaEntrada: horaEntrada,
+          horaSalida: new Date().toISOString(),
+          sesionesCompletadas: studyCount,
+          descansos: breakCount
+        };
+
+        const blob = new Blob([JSON.stringify(data)], {
+          type: 'application/json'
+        });
+
+        navigator.sendBeacon('/guardar-pomodoro', blob);
+      }
+    });
+
+    updateDisplay();
+    renderTasks();
+  });
 </script>
 </body>
 </html>
