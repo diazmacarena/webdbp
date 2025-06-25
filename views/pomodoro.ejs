@@ -366,8 +366,8 @@
   </div>
 
 <script>
-  let tasks = window.tasks || [];
-  let sesion = window.sesion || { sesiones: 0, descansos: 0 };
+  window.tasks = <%- JSON.stringify(tareas) %>;
+  window.sesion = <%- JSON.stringify(sesion) %>;
 
   let studyCount = sesion.sesiones || 0;
   let breakCount = sesion.descansos || 0;
