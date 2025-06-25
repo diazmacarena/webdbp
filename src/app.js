@@ -517,25 +517,23 @@ app.get('/pomodoro', checkAuth, async (req, res) => {
   try {
     const uid = req.user.uid;
 
+    // Obtener tareas del usuario
     const tareasSnapshot = await db.collection('l_tareas').doc(uid).collection('tareas').get();
     const tareas = tareasSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
 
+    // Obtener la sesión Pomodoro del día
     const today = new Date().toISOString().split('T')[0];
     const sesionDoc = await db.collection('r_pomodoro').doc(uid).collection('sesiones').doc(today).get();
 
-    const sesion = sesionDoc.exists ? sesionDoc.data() : {
-      hora_entrada: null,
-      sesiones: 0,
-      descansos: 0
-    };
+    const sesion = sesionDoc.exists ? { id: sesionDoc.id, ...sesionDoc.data() } : null;
 
     res.render('pomodoro', {
       title: 'Temporizador Pomodoro',
       tareas,
-      sesion // se pasa al frontend
+      sesion
     });
 
   } catch (err) {
