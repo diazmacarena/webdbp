@@ -487,6 +487,7 @@
         })
         .catch(console.error);
     }
+window.completarTarea = completarTarea;
 
     function eliminarTarea(id) {
       fetch(`/eliminar-tarea/${id}`, { method: 'DELETE' })
@@ -497,6 +498,7 @@
         })
         .catch(console.error);
     }
+window.eliminarTarea = eliminarTarea;
 
     document.getElementById('formNuevaTarea').addEventListener('submit', function (e) {
       e.preventDefault();
